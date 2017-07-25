@@ -10,6 +10,9 @@ https://learn.sparkfun.com/tutorials/ir-communication
 For sending and receiving IR signals on ESP8266, we utilize this library:
 https://github.com/markszabo/IRremoteESP8266
 
+IR emitter has two legs, connect long leg to signal PIN and short leg to ground PIN; you may add a 200-500 ohms resistor.
+IR receiver has three legs, see this image for the pin connector: https://github.com/raymondxie/duelling/blob/master/doc/ir-receiver.jpg
+
 
 ## Wand
 
