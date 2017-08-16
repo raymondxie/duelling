@@ -12,6 +12,28 @@
 
 #include <Adafruit_NeoPixel.h>
 
+//#include <ESP8266WiFi.h>
+//#include <PubSubClient.h>
+
+const char *ssid =  "XIESLAND";   // cannot be longer than 32 characters!
+const char *pass =  "719fc8a4be";  
+
+const char* mqtt_server = "m11.cloudmqtt.com";
+const int mqtt_port = 13647; 
+const char *mqtt_user = "megauser";
+const char *mqtt_pass = "megapass"; 
+const char *mqtt_topic = "/stringman";
+String mqtt_clientid = "mega";
+
+byte mac[]    = {  0xB8, 0x53, 0xDB, 0x12, 0x0C, 0x09 };
+
+
+/*#define AIO_SERVER      "io.adafruit.com"
+#define AIO_SERVERPORT  1883                   // use 8883 for SSL
+#define AIO_USERNAME    "makeable"
+#define AIO_KEY         "2ffc3948527a4ce792bc78e5a1877e01"
+*/
+
 //Defining Receiver Pin: GPIO pin 14 (D5 on a NodeMCU)
 uint16_t RECV_PIN = 14;
 const int resetButtonPin = 13;
@@ -21,82 +43,118 @@ IRrecv irrecv(RECV_PIN);
 
 decode_results results;
 
+#define BUFFER_SIZE 100
+
+bool LedState = false;
+
 // NodeMCU D3 pin
 #define PIN           D3
 
 // How many NeoPixels are attached to the Arduino?
-#define NUMPIXELS      12
+#define NUMPIXELS     12
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 int delayval = 500; // delay for half a second
-int count = 0;
 uint32_t color[12]; // hold the color for each pixel
+int ledCount = 0;
+
+//WiFiClient wclient;
+//PubSubClient client(wclient, mqtt_server, mqtt_port);
+
 
 void setup() {
   pixels.begin(); 
   pixels.setBrightness(32);
 
-  count = 0;
   delay(delayval);
 
   Serial.begin(115200);
   irrecv.enableIRIn();
 
-  pinMode(resetButtonPin, INPUT);
+  pinMode(resetButtonPin, INPUT_PULLUP);
 }
 
+
+/*void callback(const MQTT::Publish& pub) {
+  LedState = !LedState;
+  digitalWrite(0, LedState);  
+}
+*/
 void loop() {
   //simulateShield();
   
   // pace the loop
 
+  //Mqtt Connect
+  /*if (WiFi.status() != WL_CONNECTED) {
+    Serial.print("Connecting to ");
+    Serial.print(ssid);
+    Serial.println("...");
+    WiFi.begin(ssid, pass);
+
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+      return;
+    Serial.println("WiFi connected");
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!client.connected()) {
+      Serial.println("Connecting to MQTT server");
+      if (client.connect(MQTT::Connect("arduinoClient2").set_auth(mqtt_user, mqtt_pass))) {
+        Serial.println("Connected to MQTT server");
+        client.set_callback(callback);
+        client.subscribe("/test/buttonPressed");
+      } else {
+        Serial.println("Could not connect to MQTT server");   
+      }
+    }
+    if (client.connected())
+        client.loop();
+   }
+  */
   //Reset Button 
+
+  
   resetButtonState = digitalRead(resetButtonPin);
 
-  if(resetButtonState == HIGH){
-    count = 0;
+  if(resetButtonState == LOW){
+    Serial.println("Reset is being pressed");
+    resetGame();
   }
   else{
     if (irrecv.decode(&results)) {
     // print() & println() can't handle printing long longs. (uint64_t)
-    serialPrintUint64(results.value, HEX);
-    Serial.println("");
-    simulateShield();
-    irrecv.resume();  // Receive the next value
+    if(results.value == 0xa90){
+      ledCount++;
+      color[ledCount-1] = pixels.Color(64,0,0);
+      lightUpShield();
+    }
+    else if(results.value == 0xb61){
+      ledCount++;
+      color[ledCount-1] = pixels.Color(0,64,0);
+      lightUpShield();
+    }
+    else if(results.value == 0xc51){
+      ledCount++;
+      color[ledCount-1] = pixels.Color(0,0,64);
+      lightUpShield();
+    }
+    irrecv.resume();
   }    
   }
-  delay(delayval); 
-}
-
-
-void simulateShield() {
-  // wait for IR sensor read, to increment count and get the color
-  count++;
-
-  if( count > 0 && count <= 12 ) {
-    int randomColor = random(3);
-    if(randomColor == 0) {
-        // red
-        color[count-1] = pixels.Color(64,0,0);
-    }
-    else if(randomColor == 1) {
-        // green
-        color[count-1] = pixels.Color(0,64,0);
-    }
-    else if(randomColor == 2) {
-        // blue
-        color[count-1] = pixels.Color(0,0,64);
-    }
-    
-    pixels.setPixelColor(count-1, color[count-1] );    
-    pixels.show();
-  }
-  
-  if( count == 12 ) 
+  //delay(delayval); 
+  if( ledCount == 12 ) 
     gameOver();
-  
 }
+
+void lightUpShield(){
+  int i = ledCount-1;
+  pixels.setPixelColor(i, color[i]);    
+  pixels.show();
+  delay(1000);
+}
+
 
 void flashOnce() {
   uint16_t n = pixels.numPixels();
@@ -121,4 +179,22 @@ void gameOver() {
   for(int i=0; i<10; i++) {
     flashOnce();
   }
+  resetGame();
 }
+
+void displayLed(){
+  for( int i=0; i<12; i++) {
+    pixels.setPixelColor(i, color[i]);
+  }
+  pixels.show();
+}
+
+void resetGame(){
+    ledCount = 0;
+    for(int i=0; i<12; i++) {
+      color[i] = pixels.Color(0,0,0);
+    }
+    displayLed();
+    delay(1000);
+ }
+
