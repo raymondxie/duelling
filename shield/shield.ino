@@ -1,3 +1,7 @@
+#include <MQTT.h>
+#include <PubSubClient.h>
+#include <PubSubClient_JSON.h>
+
 #include <ir_Daikin.h>
 #include <ir_Fujitsu.h>
 #include <ir_Kelvinator.h>
@@ -12,27 +16,19 @@
 
 #include <Adafruit_NeoPixel.h>
 
-//#include <ESP8266WiFi.h>
-//#include <PubSubClient.h>
+#include <ESP8266WiFi.h>
 
-const char *ssid =  "XIESLAND";   // cannot be longer than 32 characters!
-const char *pass =  "719fc8a4be";  
+const char *ssid =  "2021 Vanderslice";   // cannot be longer than 32 characters!
+const char *pass =  "9259437679";  
 
-const char* mqtt_server = "m11.cloudmqtt.com";
-const int mqtt_port = 13647; 
-const char *mqtt_user = "megauser";
-const char *mqtt_pass = "megapass"; 
-const char *mqtt_topic = "/stringman";
+const char *mqtt_server = "m11.cloudmqtt.com";
+const int mqtt_port = 14375; 
+const char *mqtt_user = "uswpgtxw";
+const char *mqtt_pass = "IpYpPa2Sn7tT"; 
+const char *mqtt_topic = "";
 String mqtt_clientid = "mega";
 
 byte mac[]    = {  0xB8, 0x53, 0xDB, 0x12, 0x0C, 0x09 };
-
-
-/*#define AIO_SERVER      "io.adafruit.com"
-#define AIO_SERVERPORT  1883                   // use 8883 for SSL
-#define AIO_USERNAME    "makeable"
-#define AIO_KEY         "2ffc3948527a4ce792bc78e5a1877e01"
-*/
 
 //Defining Receiver Pin: GPIO pin 14 (D5 on a NodeMCU)
 uint16_t RECV_PIN = 14;
@@ -59,8 +55,9 @@ int delayval = 500; // delay for half a second
 uint32_t color[12]; // hold the color for each pixel
 int ledCount = 0;
 
-//WiFiClient wclient;
-//PubSubClient client(wclient, mqtt_server, mqtt_port);
+//Defining Wifi Client and Pubsub Client
+WiFiClient wclient;
+PubSubClient client(wclient, mqtt_server, mqtt_port);
 
 
 void setup() {
@@ -72,6 +69,7 @@ void setup() {
   Serial.begin(115200);
   irrecv.enableIRIn();
 
+
   pinMode(resetButtonPin, INPUT_PULLUP);
 }
 
@@ -81,13 +79,14 @@ void setup() {
   digitalWrite(0, LedState);  
 }
 */
+
 void loop() {
   //simulateShield();
   
   // pace the loop
 
   //Mqtt Connect
-  /*if (WiFi.status() != WL_CONNECTED) {
+ if (WiFi.status() != WL_CONNECTED) {
     Serial.print("Connecting to ");
     Serial.print(ssid);
     Serial.println("...");
@@ -101,18 +100,19 @@ void loop() {
   if (WiFi.status() == WL_CONNECTED) {
     if (!client.connected()) {
       Serial.println("Connecting to MQTT server");
-      if (client.connect(MQTT::Connect("arduinoClient2").set_auth(mqtt_user, mqtt_pass))) {
+      if (client.connect(MQTT::Connect("arduinoClient")
+                         .set_auth(mqtt_user, mqtt_pass))) {
         Serial.println("Connected to MQTT server");
-        client.set_callback(callback);
-        client.subscribe("/test/buttonPressed");
+        client.publish("shield","hello world");
       } else {
         Serial.println("Could not connect to MQTT server");   
       }
     }
+
     if (client.connected())
-        client.loop();
-   }
-  */
+      client.loop();
+  }
+  
   //Reset Button 
 
   
@@ -129,16 +129,19 @@ void loop() {
       ledCount++;
       color[ledCount-1] = pixels.Color(64,0,0);
       lightUpShield();
+      client.publish("shield", "hit by fire");
     }
     else if(results.value == 0xb61){
       ledCount++;
       color[ledCount-1] = pixels.Color(0,64,0);
       lightUpShield();
+      client.publish("shield", "hit by earth");
     }
     else if(results.value == 0xc51){
       ledCount++;
       color[ledCount-1] = pixels.Color(0,0,64);
       lightUpShield();
+      client.publish("shield", "hit by ice");
     }
     irrecv.resume();
   }    
