@@ -1,4 +1,4 @@
-
+//Defining Librarys 
 #include <WiFiManager.h>
 
 #include <MQTT.h>
@@ -28,9 +28,11 @@
 //const char *ssid =  "XIESLAND";   // cannot be longer than 32 characters!
 //const char *pass =  "719fc8a4be";  
 
+//Defining WifiManager and Web Server
 WiFiManager wifiManager;
 ESP8266WebServer server ( 80 );
 
+//Defining Mqtt Credentials
 const char *mqtt_server = "m11.cloudmqtt.com";
 const int mqtt_port = 14375; 
 const char *mqtt_user = "nodeuser";
@@ -79,7 +81,7 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   //entered config mode, make led toggle faster
 }
 
-
+//Defining callback
 void callback(const MQTT::Publish& pub) {
   // In order to republish this payload, a copy must be made
   // as the orignal payload buffer will be overwritten whilst
@@ -147,6 +149,8 @@ void loop() {
     Serial.println("WiFi connected");
   }
 */
+
+  //Wifi Connection
   if (WiFi.status() == WL_CONNECTED) {
     if (!client.connected()) {
       Serial.println("Connecting to MQTT server");
@@ -171,10 +175,12 @@ void loop() {
   
   resetButtonState = digitalRead(resetButtonPin);
 
+
   if(resetButtonState == LOW){
     Serial.println("Reset is being pressed");
     resetGame();
   }
+  //Differentiate Spells when hit
   else{
     if (irrecv.decode(&results)) {
     // print() & println() can't handle printing long longs. (uint64_t)
@@ -215,6 +221,7 @@ void loop() {
     delay(1000);
 }
 
+//Light up shield
 void lightUpShield(){
   int i = ledCount-1;
   pixels.setPixelColor(i, color[i]);    
@@ -222,7 +229,7 @@ void lightUpShield(){
   delay(1000);
 }
 
-
+//Reset Game
 void resetGame(){
     ledCount = 0;
     for(int i=0; i<12; i++) {
@@ -232,7 +239,7 @@ void resetGame(){
     delay(1000);
  }
 
-
+//Flash Once
 void flashOnce() {
   uint16_t n = pixels.numPixels();
   
@@ -252,6 +259,7 @@ void flashOnce() {
 
 }
 
+//Game Over
 void gameOver() {
   for(int i=0; i<10; i++) {
     flashOnce();
@@ -259,6 +267,7 @@ void gameOver() {
   resetGame();
 }
 
+//Display LED
 void displayLed(){
   for( int i=0; i<12; i++) {
     
