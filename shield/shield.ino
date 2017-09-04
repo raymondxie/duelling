@@ -41,6 +41,7 @@ Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ80
 
 int delayval = 500; // delay for half a second
 
+
 char color[12]; // hold the color name (rgb) for each pixel
 int ledCount = 0;
 
@@ -76,6 +77,14 @@ void mqttCallback(const MQTT::Publish& pub) {
 }
 
 void setup() {
+
+  //Defining pixel amount
+  uint16_t n = pixels.numPixels();
+  //Make every object in color array as blank
+  for(int i=0;i<n;i++){
+    color[i] = ' ';
+  }
+
   Serial.begin(9600);
   pinMode(resetButtonPin, INPUT_PULLUP);
 
