@@ -78,20 +78,13 @@ void mqttCallback(const MQTT::Publish& pub) {
 
 void setup() {
 
-  //Defining pixel amount
-  uint16_t n = pixels.numPixels();
-  //Make every object in color array as blank
-  for(int i=0;i<n;i++){
-    color[i] = ' ';
-  }
-
   Serial.begin(9600);
   pinMode(resetButtonPin, INPUT_PULLUP);
 
   pixels.begin(); 
   pixels.setBrightness(32);
 
-  delay(delayval);
+  resetGame();
 
   wifiManager.setAPCallback(configModeCallback);
 
@@ -109,6 +102,13 @@ void setup() {
 
   // ready for IR input
   irrecv.enableIRIn();
+
+  // blink BLUE led once to indicate ready to go!
+  pinMode(D0, OUTPUT);
+  digitalWrite(D0, LOW);
+  delay(1000);
+  digitalWrite(D0, HIGH);
+  
 }
 
 void loop() {
