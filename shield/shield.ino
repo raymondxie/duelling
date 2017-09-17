@@ -73,7 +73,23 @@ void mqttCallback(const MQTT::Publish& pub) {
 
     playerId = player.substring(7);
     Serial.println(playerId);
+
+    // show an effect to indicate it is paired
+    ringCircle();
   }
+}
+
+void ringCircle() {
+    uint16_t n = pixels.numPixels();
+
+    for(int i=0; i<n; i++) {
+      pixels.setPixelColor(i, pixels.Color(64,0,0));
+      pixels.show();
+      delay(100);
+    }
+    delay(1000);
+
+    resetGame();
 }
 
 void setup() {
