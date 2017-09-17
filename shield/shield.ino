@@ -100,7 +100,7 @@ void setup() {
   pixels.begin(); 
   pixels.setBrightness(32);
 
-  resetGame();
+  ringCircle();
 
   wifiManager.setAPCallback(configModeCallback);
 
