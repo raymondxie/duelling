@@ -22,7 +22,9 @@ const char *mqtt_server = "m11.cloudmqtt.com";
 const int mqtt_port = 14375; 
 const char *mqtt_user = "nodeuser";
 const char *mqtt_pass = "nodepass"; 
-const char *mqtt_topic = "shield";  
+const char *mqtt_topic_out = "shield";
+const char *mqtt_topic_in = "player";
+
 String mqtt_clientid = "mega3";
 
 //Defining Receiver Pin: GPIO pin 14 (D5 on a NodeMCU)
@@ -60,11 +62,8 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 
 //Defining MQTT callback to receive message (player=[left|right]
 void mqttCallback(const MQTT::Publish& pub) {
-  // In order to republish this payload, a copy must be made
-  // as the orignal payload buffer will be overwritten whilst
-  // constructing the PUBLISH packet.
-  Serial.println("Calling back");
-  // Copy the payload to a new message
+  Serial.println("Getting incoming MQTT message");
+  
   if (digitalRead(resetButtonPin) == LOW) {
     //uint8_t* temp = pub.payload();
     //String boardId = temp.substr(6);
@@ -90,6 +89,104 @@ void ringCircle(char color) {
     delay(1000);
 
     resetGame();
+}
+
+
+
+//Reset Game: turn all LED light off, and clear color array to ' '
+void resetGame(){
+    ledCount = 0;
+    uint16_t n = pixels.numPixels();
+
+    for(int i=0; i<n; i++) {
+      color[i] = ' ';
+      pixels.setPixelColor(i, pixels.Color(0,0,0));
+    }
+    pixels.show();
+    delay(1000);
+ }
+
+//Flash Once
+void flashOnce() {
+  uint16_t n = pixels.numPixels();
+  
+  // blink all lights for 10 times, then go dark
+  for( int i=0; i<n; i++) {
+    pixels.setPixelColor(i, getLedColor(color[i]));
+  }
+  pixels.show();
+  delay(delayval);
+
+  for( int i=0; i<n; i++) {
+    pixels.setPixelColor(i, pixels.Color(0,0,0));
+  }
+  pixels.show();
+  delay(delayval);
+}
+
+//Game Over effect
+void gameOver() {
+  for(int i=0; i<10; i++) {
+    flashOnce();
+  }
+  resetGame();
+  client.publish(mqtt_topic_out, "game=over");
+}
+
+// convert color name to color value
+uint32_t getLedColor(char colorName){
+  if( colorName == 'r' ){
+      return pixels.Color(64,0,0);
+  }
+  else if( colorName == 'g' ){
+      return pixels.Color(0,64,0);
+  }
+  else if( colorName == 'b' ){
+      return pixels.Color(0,0,64);
+  }
+  else if( colorName == ' ' ){
+      return pixels.Color(0,0,0);
+  }
+}
+
+// When receiving an IR signal, we determine what color it is, and then process accordingly
+void processIRInput(char colorName) {
+  color[ledCount] = colorName;
+  pixels.setPixelColor(ledCount, getLedColor(colorName));    
+  pixels.show();
+
+  ledCount++;
+  
+  String message = playerId + "=" + color;
+  Serial.println(message);
+  client.publish(mqtt_topic_out, message);
+
+  delay(1000);
+}
+
+// Connect to MQTT broker
+void reconnect() {
+  while (!client.connected()) {
+    mqtt_clientid = String(ESP.getChipId());
+    Serial.print("Attempting MQTT connection...");
+    Serial.print(mqtt_clientid);
+    Serial.print("  ");
+    Serial.print(mqtt_user);
+    
+    // Attempt to connect
+    if (client.connect(MQTT::Connect(mqtt_clientid).set_auth(mqtt_user, mqtt_pass))) {
+      Serial.println("MQTT connected");
+      client.subscribe(mqtt_topic_in);
+      client.set_callback(mqttCallback);
+    } 
+    else {
+      Serial.print("failed, rc=");
+      // Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
 }
 
 void setup() {
@@ -129,26 +226,9 @@ void setup() {
   
 }
 
-void loop() {
-  //Wifi Connection
-  if (WiFi.status() == WL_CONNECTED) {
-    if (!client.connected()) {
-      Serial.println("Connecting to MQTT server");
-      if (client.connect(MQTT::Connect("arduinoClient")
-                         .set_auth(mqtt_user, mqtt_pass))) {
-        Serial.println("Connected to MQTT server");
-        client.publish(mqtt_topic,"hello world");
-        client.subscribe("player");
-        client.set_callback(mqttCallback);
-      } else {
-        Serial.println("Could not connect to MQTT server");   
-      }
-    }
 
-    if (client.connected())
-      client.loop();
-  }
-    
+void loop() {
+
   //Reset Button 
   resetButtonState = digitalRead(resetButtonPin);
   if(resetButtonState == LOW){
@@ -175,77 +255,14 @@ void loop() {
 
   if( ledCount == 12 ) 
     gameOver();
-   
-}
 
-//Reset Game
-void resetGame(){
-    ledCount = 0;
-    uint16_t n = pixels.numPixels();
-
-    for(int i=0; i<n; i++) {
-      color[i] = ' ';
-      pixels.setPixelColor(i, pixels.Color(0,0,0));
-    }
-    pixels.show();
-    delay(1000);
- }
-
-//Flash Once
-void flashOnce() {
-  uint16_t n = pixels.numPixels();
-  
-  // blink all lights for 10 times, then go dark
-  for( int i=0; i<n; i++) {
-    pixels.setPixelColor(i, getLedColor(color[i]));
+  // 
+  if (!client.connected()) {
+    reconnect();
   }
-  pixels.show();
-  delay(delayval);
-
-  for( int i=0; i<n; i++) {
-    pixels.setPixelColor(i, pixels.Color(0,0,0));
-  }
-  pixels.show();
-  delay(delayval);
-}
-
-//Game Over effect
-void gameOver() {
-  for(int i=0; i<10; i++) {
-    flashOnce();
-  }
-  resetGame();
-  client.publish(mqtt_topic, "game=over");
-}
-
-// convert color name to color value
-uint32_t getLedColor(char colorName){
-  if( colorName == 'r' ){
-      return pixels.Color(64,0,0);
-  }
-  else if( colorName == 'g' ){
-      return pixels.Color(0,64,0);
-  }
-  else if( colorName == 'b' ){
-      return pixels.Color(0,0,64);
-  }
-  else if( colorName == ' ' ){
-      return pixels.Color(0,0,0);
+  else {
+    client.loop();
   }
 }
 
-// When receiving an IR signal, we determine what color it is, and then process accordingly
-void processIRInput(char colorName) {
-  color[ledCount] = colorName;
-  pixels.setPixelColor(ledCount, getLedColor(colorName));    
-  pixels.show();
-
-  ledCount++;
-  
-  String message = playerId + "=" + color;
-  Serial.println(message);
-  client.publish(mqtt_topic, message);
-
-  delay(1000);
-}
 
