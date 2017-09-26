@@ -23,7 +23,7 @@ const int mqtt_port = 14375;
 const char *mqtt_user = "nodeuser";
 const char *mqtt_pass = "nodepass"; 
 const char *mqtt_topic = "shield";  
-String mqtt_clientid = "mega";
+String mqtt_clientid = "mega3";
 
 //Defining Receiver Pin: GPIO pin 14 (D5 on a NodeMCU)
 uint16_t RECV_PIN = D5;
@@ -75,15 +75,15 @@ void mqttCallback(const MQTT::Publish& pub) {
     Serial.println(playerId);
 
     // show an effect to indicate it is paired
-    ringCircle();
+    ringCircle('r');
   }
 }
 
-void ringCircle() {
+void ringCircle(char color) {
     uint16_t n = pixels.numPixels();
-
+    
     for(int i=0; i<n; i++) {
-      pixels.setPixelColor(i, pixels.Color(64,0,0));
+      pixels.setPixelColor(i, getLedColor(color));
       pixels.show();
       delay(100);
     }
@@ -100,7 +100,9 @@ void setup() {
   pixels.begin(); 
   pixels.setBrightness(32);
 
-  ringCircle();
+  ringCircle('r');
+  ringCircle('g');
+  ringCircle('b');
 
   wifiManager.setAPCallback(configModeCallback);
 
@@ -158,6 +160,7 @@ void loop() {
     if (irrecv.decode(&results)) {
     // print() & println() can't handle printing long longs. (uint64_t)
       if(results.value == 0xa90){
+        Serial.println("Receiving Red");
         processIRInput('r');        
       }
       else if(results.value == 0xb61){
